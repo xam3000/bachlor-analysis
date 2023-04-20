@@ -1,0 +1,6 @@
+auftakt_renderer.py
+aufTAKTCl.exe
+*.sfk
+.vscode/launch.json
+data/.vscode/settings.json
+.ipynb_checkpoints/
