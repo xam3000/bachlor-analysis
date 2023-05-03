@@ -4,3 +4,4 @@ aufTAKTCl.exe
 .vscode/launch.json
 data/.vscode/settings.json
 .ipynb_checkpoints/
+*.mp4
