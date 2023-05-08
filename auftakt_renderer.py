@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
+from math import *
 import numpy as np
 import scipy.io.wavfile
-from librosa import load
+from librosa import *
 import pandas as pd
 import os
 import argparse
@@ -10,7 +11,7 @@ import argparse
 def main():
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-a','--audio',required=True)
+    parser.add_argument('-a','--audio')
     parser.add_argument('-o','--old-csv')
     parser.add_argument('-n','--new-csv')
 
@@ -25,19 +26,41 @@ def main():
         timings, bpm = getBeatTimingsOld(args.old_csv, bg.sample_rate)
 
     if args.new_csv is not None:
-        timings = getBeatTimingsNew(args.new_csv, bg.sample_rate)
+        timings, count_in_bars = getBeatTimingsNew(args.new_csv, bg.sample_rate)
 
         bg.load_existing(args.audio)
         prev = 0.0
-        for timing in timings:
+        for timing, count_in_bar in zip(timings, count_in_bars):
             bg.append_existing(prev, timing)
-            bg.append_sinewave(volume=vol, duration_milliseconds=dur)
+            if (count_in_bar == 1):
+                bg.append_sinewave(volume=vol, duration_milliseconds=dur,freq=880.00)
+            else:
+                bg.append_sinewave(volume=vol, duration_milliseconds=dur)
             prev = timing + float(dur)/1000
         bg.append_existing(prev, 0, toEnd=True)
         dirPath, fileName = os.path.split(args.audio)
         nameString = os.path.splitext(fileName)[0]
         savePath = f'new_{nameString}.wav'
         bg.save_wav(f"{dirPath}/{savePath}")
+
+    y, sr  = load("windows/clean.wav")
+    tempo, beats = beat.beat_track(y=y, sr=sr)
+# beats now contains the beat *frame positions*
+# convert to timestamps like this:
+    beat_times = frames_to_time(beats, sr=sr)
+
+    bg.load_existing("windows/clean.wav")
+    prev = 0.0
+    for timing in beat_times:
+        bg.append_existing(prev, timing)
+        
+        bg.append_sinewave(volume=vol, duration_milliseconds=dur)
+        prev = timing + float(dur)/1000
+    bg.append_existing(prev, 0, toEnd=True)
+    dirPath, fileName = os.path.split("windows/clean.wav")
+    nameString = os.path.splitext(fileName)[0]
+    savePath = f'new_{nameString}.wav'
+    bg.save_wav(f"{dirPath}/{savePath}")
 
 class BeepGenerator:
     def __init__(self):
@@ -56,12 +79,12 @@ class BeepGenerator:
 
     def append_existing(self, startS, endS, toEnd=False):
         start = round(self.sample_rate * startS)
-        end = round(self.sample_rate * endS)
+        end = round(self.sample_rate * endS) 
         if toEnd:
             for x in range(start, len(self.existing)-1):
                 self.audio.append(self.existing[x])
         else:
-            for x in range(start, end):
+            for x in range(start, min(end,len(self.existing)-1)):
                 self.audio.append(self.existing[x])
         return
 
@@ -170,8 +193,9 @@ def getBeatTimingsOld(file, sampleRate):
 def getBeatTimingsNew(file, sampleRate):
     data = readCsv(file)
     timings = data['time in seconds']
+    count_in_bar = data[' count in bar']
 
-    return timings
+    return timings, count_in_bar
 
 
 # Gets auftakt v4 beats from 2 txt files
