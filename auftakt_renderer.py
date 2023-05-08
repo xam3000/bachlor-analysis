@@ -43,13 +43,13 @@ def main():
         savePath = f'new_{nameString}.wav'
         bg.save_wav(f"{dirPath}/{savePath}")
 
-    y, sr  = load("windows/clean.wav")
+    y, sr  = load(args.audio)
     tempo, beats = beat.beat_track(y=y, sr=sr)
 # beats now contains the beat *frame positions*
 # convert to timestamps like this:
     beat_times = frames_to_time(beats, sr=sr)
 
-    bg.load_existing("windows/clean.wav")
+    bg.load_existing(args.audio)
     prev = 0.0
     for timing in beat_times:
         bg.append_existing(prev, timing)
@@ -57,9 +57,9 @@ def main():
         bg.append_sinewave(volume=vol, duration_milliseconds=dur)
         prev = timing + float(dur)/1000
     bg.append_existing(prev, 0, toEnd=True)
-    dirPath, fileName = os.path.split("windows/clean.wav")
+    dirPath, fileName = os.path.split(args.audio)
     nameString = os.path.splitext(fileName)[0]
-    savePath = f'new_{nameString}.wav'
+    savePath = f'librosa_{nameString}.wav'
     bg.save_wav(f"{dirPath}/{savePath}")
 
 class BeepGenerator:
