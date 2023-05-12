@@ -1,35 +1,36 @@
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import cv2
 import os
 
 
-path = "crewcamp/samsstag/"
-#path = "../../../Data/Insta_CHI/Gyro_Test/"
-name = "android.sensor.accelerometer.csv"
+
+
 
 def plot_data(min=0, max=67000):
-    plt.plot(sum3D_1)
-    plt.plot(sum3D_2)
+    plt.plot(sum3D_1,label="gyro")
+    plt.plot(sum3D_2,label="accel")
     plt.ylabel('gyrometer data')
     plt.xlabel('sample')
     plt.xlim(min, max)
+    plt.legend()
     plt.show()
 
 def create_video(image_dir, start_offset=0, endframe=None):
-    out_path = image_dir[:-len(image_dir.replace("\\","/").split('/')[-2])-1]
-    video = cv2.VideoWriter(out_path+'new_video.avi', cv2.VideoWriter_fourcc(*'DIVX'), 30, (int(2160/2), int(3840/2)))  #mp4 codec: cv2.VideoWriter_fourcc(*'h265')
-    files = os.listdir(image_dir)
+    out_path = image_dir
+    video = cv2.VideoWriter(out_path+'new_video.avi', cv2.VideoWriter_fourcc(*"MJPG"), fps, (1920, 1080))  #mp4 codec: cv2.VideoWriter_fourcc(*'h265')
 
-    num_frames_plot = 30 * 5
-    size_x = 800
-    size_y = 200 / 4
-    if endframe is None:
-        endframe = len(files)
-    for j, image_name in enumerate(files):
-        if image_name.endswith('.jpg') and j < endframe:
-            image = cv2.imread(image_dir + image_name)
-            #img_new = cv2.resize(image, (int(2160/2), int(3840/2)))
+    num_frames_plot = int(fps * 3)
+    size_x = 1800
+    size_y = 200 / 16
+    success = 1
+    j = 0
+    while success:
+        
+        success, image = og_video.read() 
+        if success:
+            img_new = cv2.resize(image, (int(2160/2), int(3840/2)))
             for k in range(num_frames_plot):
                 y1_1 = 0; y1_2 = 0; y2_1 = 0; y2_2 = 0
                 index1 = int(j + start_offset - num_frames_plot + k)
@@ -39,9 +40,12 @@ def create_video(image_dir, start_offset=0, endframe=None):
                     y1_2 = sum3D_1[index2] * size_y
                     y2_1 = sum3D_2[index1] * size_y
                     y2_2 = sum3D_2[index2] * size_y
-                cv2.line(image, (int(100+k*(size_x/num_frames_plot)), int(1800-y1_2)), (int(100+(k+1)*(size_x/num_frames_plot)), int(1800-y1_1)), (70,180,240), 5)
-                cv2.line(image, (int(100+k*(size_x/num_frames_plot)), int(1800-y2_2)), (int(100+(k+1)*(size_x/num_frames_plot)), int(1800-y2_1)), (250,120,120), 5)
+                cv2.line(image, (int(100+k*(size_x/num_frames_plot)), int(1000-y1_2)), (int(100+(k+1)*(size_x/num_frames_plot)), int(1000-y1_1)), (70,180,240), 5)    
+                cv2.line(image, (int(100+k*(size_x/num_frames_plot)), int(1000-y2_2)), (int(100+(k+1)*(size_x/num_frames_plot)), int(1000-y2_1)), (250,120,120), 5)
+                if beats[index1] == 1:
+                    cv2.line(image, (int(100+k*(size_x/num_frames_plot)),0),(int(100+k*(size_x/num_frames_plot)),1080), (0,0,0),1)
             video.write(image)
+            j += 1
     video.release()
 
 def data_to_file(filepath, cut_intervals=None, use_frames=False, fps=30, a_little_bit_more=False):
@@ -61,21 +65,47 @@ def data_to_file(filepath, cut_intervals=None, use_frames=False, fps=30, a_littl
             print("frame:", idx1, idx2)
             np.savetxt(filepath + "gyro_data"+"_("+str(steps_per_frame)+")_"+str(j)+".txt", np.swapaxes((sum3D_1[idx1:idx2], sum3D_2[idx1:idx2]), 0, 1))
 
+path = "crewcamp/samsstag/"
+#path = "../../../Data/Insta_CHI/Gyro_Test/"
+video_name = "cut.mp4"
 
-data = np.fromfile(path + name)
-#data = data.reshape((int(data.size/8), 8))
+og_video = cv2.VideoCapture(path+video_name)
 
-steps_per_frame = 1/30 / ((data[-1,1] - data[0,1]) / data.shape[0])
-
-offset = 6 * 30 * 11.07    # equals 6sec offset
+fps = og_video.get(cv2.CAP_PROP_FPS)
 
 
-sum3D_1 = np.zeros(int((data.shape[0] - offset) / steps_per_frame))
-sum3D_2 = np.zeros(int((data.shape[0] - offset) / steps_per_frame))
+accel = pd.read_csv(path + "android.sensor.accelerometer.csv")
+gyro = pd.read_csv(path + "android.sensor.gyroscope.csv")
+beat = pd.read_csv(path+ "out.csv")
+
+frame_count = og_video.get(cv2.CAP_PROP_FRAME_COUNT)
+
+accel_steps_per_frame = 1/fps / (((accel.iloc[-1,0] - accel.iloc[0,0])/ 1000000000) / accel.shape[0])
+gyro_steps_per_frame = 1/fps / (((gyro.iloc[-1,0] - gyro.iloc[0,0])/1000000000) / gyro.shape[0])
+
+frames_offset = (accel.iloc[0,0] / 1000000000) * fps
+
+# data = np.fromfile(path + name)
+# data = data.reshape((int(data.size/8), 8))
+
+# print(data.shape)
+
+# steps_per_frame = 1/30 / ((data[-1,1] - data[0,1]) / data.shape[0])
+
+offset = 0 # 6 * 30 * 11.07    # equals 6sec offset
+
+beats = np.zeros(int(frame_count))
+for i in beat.iloc[:,0]:
+    frame = round(i*fps)
+    beats[frame] = 1
+
+sum3D_1 = np.zeros(int((gyro.shape[0]) / gyro_steps_per_frame)) #gyro
+sum3D_2 = np.zeros(int((accel.shape[0]) / accel_steps_per_frame)) #accel
 for i in range(sum3D_1.shape[0]):
-    idx = int(offset+i*steps_per_frame)
-    sum3D_1[i] = np.sqrt(np.average(data[idx:int(idx+steps_per_frame),2])**2 + np.average(data[idx:int(idx+steps_per_frame),3])**2 + np.average(data[idx:int(idx+steps_per_frame),4])**2)
-    sum3D_2[i] = abs(np.sqrt(np.average(data[idx:int(idx+steps_per_frame),5])**2 + np.average(data[idx:int(idx+steps_per_frame),6])**2 + np.average(data[idx:int(idx+steps_per_frame),7])**2)-1)
+    idx = int(offset+i*gyro_steps_per_frame)
+    sum3D_1[i] = np.sqrt(np.average(gyro.iloc[idx:int(idx+gyro_steps_per_frame),1])**2 + np.average(gyro.iloc[idx:int(idx+gyro_steps_per_frame),2])**2 + np.average(gyro.iloc[idx:int(idx+gyro_steps_per_frame),3])**2)
+    idx = int(offset+i*accel_steps_per_frame)
+    sum3D_2[i] = abs(np.sqrt(np.average(accel.iloc[idx:int(idx+accel_steps_per_frame),1])**2 + np.average(accel.iloc[idx:int(idx+accel_steps_per_frame),2])**2 + np.average(accel.iloc[idx:int(idx+accel_steps_per_frame),3])**2)-10)
 
 #sum3D_1 = np.zeros(data.shape[0])
 #sum3D_2 = np.zeros(data.shape[0])
@@ -86,7 +116,7 @@ for i in range(sum3D_1.shape[0]):
 
 #plot_data(max=len(sum3D_1))
 
-#create_video(path + 'extr_fall6/', 445*30)
+create_video(path,-frames_offset)
 
 #data_to_file(path, cut_intervals=np.array([(95.0, 118), (153, 180), (190, 205), (250, 267), (320, 350), (385, 420), (445, 465), (534, 547)]))
 #data_to_file(path, cut_intervals=np.array([(2749, 3499), (4749, 5499), (5749, 6249), (7499, 8129), (9629, 10630), (11629, 12629), (13379, 14129), (15879, 16629)]), use_frames=True, a_little_bit_more=True)

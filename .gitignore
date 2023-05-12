@@ -5,3 +5,6 @@ data/.vscode/settings.json
 .ipynb_checkpoints/
 *.mp4
 windows/
+*.mov
+*.avi
+body_pump/8.5/*.wav
