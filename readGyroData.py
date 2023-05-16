@@ -43,7 +43,7 @@ def create_video(image_dir, start_offset=0, endframe=None):
                 cv2.line(image, (int(100+k*(size_x/num_frames_plot)), int(1000-y1_2)), (int(100+(k+1)*(size_x/num_frames_plot)), int(1000-y1_1)), (70,180,240), 5)    
                 cv2.line(image, (int(100+k*(size_x/num_frames_plot)), int(1000-y2_2)), (int(100+(k+1)*(size_x/num_frames_plot)), int(1000-y2_1)), (250,120,120), 5)
                 if beats[index1] == 1:
-                    cv2.line(image, (int(100+k*(size_x/num_frames_plot)),0),(int(100+k*(size_x/num_frames_plot)),1080), (0,0,0),1)
+                    cv2.line(image, (int(100+k*(size_x/num_frames_plot)),0),(int(100+k*(size_x/num_frames_plot)),1080), (255,255,255),1)
             video.write(image)
             j += 1
     video.release()
@@ -65,7 +65,7 @@ def data_to_file(filepath, cut_intervals=None, use_frames=False, fps=30, a_littl
             print("frame:", idx1, idx2)
             np.savetxt(filepath + "gyro_data"+"_("+str(steps_per_frame)+")_"+str(j)+".txt", np.swapaxes((sum3D_1[idx1:idx2], sum3D_2[idx1:idx2]), 0, 1))
 
-path = "crewcamp/samsstag/"
+path = "test_bei_mir/"
 #path = "../../../Data/Insta_CHI/Gyro_Test/"
 video_name = "cut.mp4"
 
